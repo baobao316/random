@@ -3,447 +3,397 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>終極分組抽籤系統</title>
+    <title>終極分組抽籤</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
-
-        /* 玻璃擬態卡片風格 */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* 正在抽籤時的發光閃爍效果 */
-        .rolling-card {
-            border-color: #f59e0b;
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
-            animation: pulse-glow 0.5s infinite alternate;
-            transform: scale(1.05);
-            transition: all 0.2s ease;
-        }
-
-        /* 鎖定（抽中）時的特效 */
-        .locked-card {
-            border-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.15);
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
-            transform: scale(1);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes pulse-glow {
-            from { box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
-            to { box-shadow: 0 0 30px rgba(245, 158, 11, 0.8); }
-        }
-
-        .name-item {
-            animation: fade-in 0.3s ease-out forwards;
-        }
-
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 隱藏捲動條但保留功能 */
-        textarea::-webkit-scrollbar {
-            width: 8px;
-        }
-        textarea::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-
-        #confetti-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 9999;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-900 via-gray-900 to-black">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center py-12 px-4 overflow-x-hidden relative">
 
-    <!-- 慶祝紙片畫布 -->
-    <canvas id="confetti-canvas"></canvas>
+    <!-- 漂浮背景裝飾 -->
+    <div class="fixed top-20 left-20 w-64 h-64 bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 pointer-events-none"></div>
+    <div class="fixed bottom-20 right-20 w-64 h-64 bg-purple-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 pointer-events-none"></div>
 
-    <!-- 階段一：輸入區 -->
-    <div id="setup-screen" class="w-full max-w-2xl glass-card rounded-2xl p-6 sm:p-10 shadow-2xl transition-all duration-500">
-        <div class="text-center mb-8">
-            <h1 class="text-4xl sm:text-5xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-wider">
-                ⚡ 終極分組抽籤 ⚡
-            </h1>
-            <p class="text-slate-400">自動將名單均勻分配至 6 個組別，體驗心跳加速的揭曉時刻！</p>
-        </div>
+    <h1 class="text-4xl sm:text-5xl font-black mb-10 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 drop-shadow-lg z-10">
+        🎲 終極分組抽籤 (6組)
+    </h1>
 
-        <div class="mb-6 relative">
-            <label for="names-input" class="block text-sm font-bold text-slate-300 mb-2">輸入名單 (每行一個名字，或用逗號隔開)：</label>
-            <textarea id="names-input" rows="8" class="w-full bg-slate-800/50 border border-slate-600 rounded-xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-lg" placeholder="例如：&#10;王小明&#10;陳大牛&#10;林美玲&#10;..."></textarea>
-            
-            <div id="error-msg" class="hidden absolute -bottom-8 left-0 text-red-400 text-sm font-bold flex items-center">
-                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                <span>請至少輸入一個名字！</span>
-            </div>
-        </div>
-
-        <button id="start-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xl py-4 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] transform hover:-translate-y-1 transition-all duration-200 active:scale-95">
-            開始分組抽籤
+    <!-- 階段一：名單輸入 -->
+    <div id="setup-screen" class="w-full max-w-2xl glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl transition-all duration-500 z-10">
+        <label for="names-input" class="block text-lg font-bold mb-3 text-slate-300">請貼上參與者名單 (每行一個名字或用逗號分隔)：</label>
+        <textarea id="names-input" rows="8" class="w-full bg-slate-800/80 border border-slate-600 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow text-lg resize-none mb-4" placeholder="例如：
+王大明
+陳小美
+張三
+李四..."></textarea>
+        
+        <p id="error-msg" class="text-red-400 text-sm mb-4 hidden font-bold">⚠️ 請至少輸入一個名字才能開始！</p>
+        
+        <button id="start-btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black text-xl py-4 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.5)] transform hover:-translate-y-1 active:scale-95">
+            🚀 開始進行分組！
         </button>
     </div>
 
-    <!-- 階段二：抽籤展示區 -->
-    <div id="draw-screen" class="w-full max-w-6xl hidden flex-col items-center opacity-0 transition-opacity duration-1000">
+    <!-- 階段二：抽籤動畫區塊 -->
+    <div id="draw-screen" class="w-full max-w-5xl hidden flex-col items-center absolute top-32 left-1/2 transform -translate-x-1/2 opacity-0 transition-opacity duration-500 z-10">
         <h2 id="status-title" class="text-3xl sm:text-4xl font-black mb-8 text-center text-amber-400 tracking-widest drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
             準備開始...
         </h2>
-
-        <!-- 6個組別的網格 -->
-        <div id="groups-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 w-full">
-            <!-- 卡片會由 JS 動態產生 -->
+        
+        <!-- 6組卡片容器 -->
+        <div id="groups-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 w-full px-4">
+            <!-- 由 JS 動態產生 6 張玻璃卡片 -->
         </div>
-
-        <button id="restart-btn" class="mt-10 hidden bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-8 rounded-full transition-all duration-200 shadow-lg">
-            重新抽籤
-        </button>
     </div>
 
+    <!-- 階段三：簡單乾淨的結果列表 -->
+    <div id="result-screen" class="w-full max-w-3xl hidden flex-col items-center opacity-0 transition-opacity duration-1000 z-10">
+        <div class="w-full bg-white rounded-2xl shadow-2xl p-6 sm:p-10 text-slate-800">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 border-b-2 border-slate-100 pb-6 gap-4">
+                <h3 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                    <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    分組結果全覽
+                </h3>
+                <button id="copy-excel-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-2 transform hover:-translate-y-1 active:scale-95">
+                    📋 複製名單 (一人一格直列)
+                </button>
+            </div>
+            
+            <div id="simple-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- 最終簡單列表由 JS 產生 -->
+            </div>
+            
+            <div class="mt-10 flex justify-center pt-6 border-t border-slate-100">
+                <button id="restart-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-8 rounded-xl transition-all">
+                    返回重新抽籤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 慶祝彩帶 Canvas -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50 hidden"></canvas>
+
     <script>
-        // DOM 元素
+        // 核心設定
+        const NUM_GROUPS = 6;
+        let finalGroups = [];
+        let audioCtx = null;
+        let isDrawing = false;
+
+        // DOM 元素綁定
         const setupScreen = document.getElementById('setup-screen');
         const drawScreen = document.getElementById('draw-screen');
+        const resultScreen = document.getElementById('result-screen');
         const namesInput = document.getElementById('names-input');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const copyExcelBtn = document.getElementById('copy-excel-btn');
         const errorMsg = document.getElementById('error-msg');
         const groupsContainer = document.getElementById('groups-container');
+        const simpleListContainer = document.getElementById('simple-list-container');
         const statusTitle = document.getElementById('status-title');
-
-        // 狀態變數
-        const NUM_GROUPS = 6;
-        let originalNames = [];
-        let finalGroups = [];
-        let currentGroupIndex = 0;
-        let isDrawing = false;
-        
-        // Web Audio API (用於製造緊張音效)
-        let audioCtx;
+        const confettiCanvas = document.getElementById('confetti-canvas');
 
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
         }
 
-        // 短促的滴答聲 (滾動時)
         function playTick() {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            
             osc.start();
             osc.stop(audioCtx.currentTime + 0.05);
         }
 
-        // 沉重的鎖定聲 (確定組別時)
-        function playLockSound() {
+        function playSuccess() {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.5);
-            
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-            
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+            osc.stop(audioCtx.currentTime + 0.3);
         }
 
-        // 歡呼/完成音效
-        function playSuccessSound() {
-            if (!audioCtx) return;
-            const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
-            notes.forEach((freq, index) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.1);
-                
-                gain.gain.setValueAtTime(0, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime + index * 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * 0.1 + 0.3);
-                
-                osc.start(audioCtx.currentTime + index * 0.1);
-                osc.stop(audioCtx.currentTime + index * 0.1 + 0.3);
-            });
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
-        // 解析並洗牌名單
-        function processNames() {
-            const rawText = namesInput.value;
-            // 支援換行或逗號分隔，過濾空白
-            originalNames = rawText.split(/[\n,]+/)
-                                   .map(name => name.trim())
-                                   .filter(name => name.length > 0);
-            
-            if (originalNames.length === 0) {
+        startBtn.addEventListener('click', () => {
+            initAudio();
+            const text = namesInput.value.trim();
+            if (!text) {
                 errorMsg.classList.remove('hidden');
-                return false;
+                return;
             }
             errorMsg.classList.add('hidden');
 
-            // Fisher-Yates 洗牌演算法
-            let shuffled = [...originalNames];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
+            let names = text.split(/[\n,、\t]+/).map(n => n.trim()).filter(n => n);
+            if (names.length === 0) return;
 
-            // 平均分配到 6 個組別
-            finalGroups = Array.from({length: NUM_GROUPS}, () => []);
-            shuffled.forEach((name, index) => {
-                finalGroups[index % NUM_GROUPS].push(name);
+            // 隨機打亂並分配到6組
+            shuffleArray(names);
+            finalGroups = Array.from({ length: NUM_GROUPS }, () => []);
+            names.forEach((name, i) => {
+                finalGroups[i % NUM_GROUPS].push(name);
             });
 
-            return true;
-        }
-
-        // 初始化卡片 UI
-        function createGroupCards() {
+            // 建立6張抽籤卡片
             groupsContainer.innerHTML = '';
             for (let i = 0; i < NUM_GROUPS; i++) {
-                const card = document.createElement('div');
-                card.id = `group-card-${i}`;
-                card.className = 'glass-card rounded-xl p-4 sm:p-6 flex flex-col h-48 sm:h-64 overflow-hidden relative';
-                
-                const title = document.createElement('h3');
-                title.className = 'text-xl sm:text-2xl font-black text-slate-200 mb-3 text-center border-b border-slate-600 pb-2';
-                title.textContent = `第 ${i + 1} 組`;
-                
-                const membersContainer = document.createElement('div');
-                membersContainer.id = `group-members-${i}`;
-                membersContainer.className = 'flex-1 overflow-y-auto flex flex-col gap-2 items-center justify-center';
-                
-                // 預設問號
-                const placeholder = document.createElement('span');
-                placeholder.className = 'text-4xl text-slate-600 opacity-50 font-black';
-                placeholder.textContent = '?';
-                membersContainer.appendChild(placeholder);
-
-                card.appendChild(title);
-                card.appendChild(membersContainer);
-                groupsContainer.appendChild(card);
-            }
-        }
-
-        // 渲染指定組別內的名字
-        function renderNamesInCard(groupIndex, namesList, isRolling) {
-            const container = document.getElementById(`group-members-${groupIndex}`);
-            container.innerHTML = '';
-            
-            if (namesList.length === 0) {
-                container.innerHTML = '<span class="text-slate-500 italic">無人</span>';
-                return;
+                groupsContainer.innerHTML += `
+                    <div id="group-card-${i}" class="glass-panel rounded-xl p-4 sm:p-6 shadow-xl transform transition-all duration-200">
+                        <h3 class="text-lg font-bold text-slate-400 mb-3 border-b border-slate-600/50 pb-2">第 ${i + 1} 組</h3>
+                        <div id="group-content-${i}" class="text-3xl sm:text-4xl font-black text-amber-500 flex items-center justify-center h-20 tracking-widest drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                            ?
+                        </div>
+                    </div>
+                `;
             }
 
-            namesList.forEach(name => {
-                const span = document.createElement('span');
-                span.className = `font-bold text-lg sm:text-xl text-center w-full truncate ${isRolling ? 'text-slate-400 blur-[1px]' : 'text-white name-item'}`;
-                span.textContent = name;
-                container.appendChild(span);
-            });
-        }
+            // 切換畫面
+            setupScreen.classList.add('opacity-0');
+            setTimeout(() => {
+                setupScreen.classList.add('hidden', 'absolute');
+                drawScreen.classList.remove('hidden');
+                setTimeout(() => {
+                    drawScreen.classList.remove('opacity-0');
+                    setTimeout(startFastDrawing, 300);
+                }, 50);
+            }, 500);
+        });
 
-        // 核心動畫控制：逐組開獎
-        function startDrawingSequence() {
-            currentGroupIndex = 0;
+        function startFastDrawing() {
             isDrawing = true;
-            restartBtn.classList.add('hidden');
-            
-            // 進入下一組的遞迴函數
-            function animateNextGroup() {
+            let currentGroupIndex = 0;
+            statusTitle.textContent = '🚀 緊張分組中...';
+
+            function drawNextGroup() {
                 if (currentGroupIndex >= NUM_GROUPS) {
                     finishDrawing();
                     return;
                 }
 
                 const card = document.getElementById(`group-card-${currentGroupIndex}`);
-                statusTitle.textContent = `⚡ 正在抽出 第 ${currentGroupIndex + 1} 組 ⚡`;
-                card.classList.add('rolling-card');
-
+                const content = document.getElementById(`group-content-${currentGroupIndex}`);
                 const targetNames = finalGroups[currentGroupIndex];
+                const allNames = finalGroups.flat();
+                
                 let ticks = 0;
-                const maxTicks = 25; // 每次動畫約 25 次變換 (營造緊張感)
-                const tickInterval = 80; // 毫秒
+                // 減少 tick 次數與間隔，讓每組只要約 0.8 秒就開獎
+                const maxTicks = 12; 
+                const tickInterval = 60; 
 
                 const rollInterval = setInterval(() => {
                     ticks++;
                     playTick();
                     
-                    // 隨機顯示名字產生「滾動」錯覺
-                    let dummyNames = [];
-                    for(let i=0; i<targetNames.length; i++) {
-                        dummyNames.push(originalNames[Math.floor(Math.random() * originalNames.length)]);
-                    }
-                    renderNamesInCard(currentGroupIndex, dummyNames, true);
+                    // 隨機名字閃爍殘影
+                    let randomName = allNames[Math.floor(Math.random() * allNames.length)];
+                    content.innerHTML = `<span class="opacity-50 blur-[1px] text-2xl">${randomName}</span>`;
+                    
+                    // 卡片微震動
+                    card.style.transform = `translateY(${Math.random() * 4 - 2}px)`;
 
-                    // 停止滾動，鎖定結果
                     if (ticks >= maxTicks) {
                         clearInterval(rollInterval);
+                        playSuccess();
                         
-                        playLockSound();
-                        card.classList.remove('rolling-card');
-                        card.classList.add('locked-card');
-                        renderNamesInCard(currentGroupIndex, targetNames, false);
+                        // 鎖定結果樣式
+                        card.style.transform = 'translateY(0) scale(1.05)';
+                        card.classList.remove('glass-panel');
+                        card.classList.add('bg-blue-900/60', 'border-blue-400', 'shadow-[0_0_15px_rgba(96,165,250,0.5)]');
                         
+                        // 顯示真實名單
+                        content.innerHTML = `<div class="text-blue-100 text-lg sm:text-xl font-bold tracking-normal drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] flex flex-wrap justify-center gap-1.5 leading-tight">${targetNames.join(', ')}</div>`;
+                        
+                        setTimeout(() => card.style.transform = 'translateY(0) scale(1)', 150);
+
                         currentGroupIndex++;
-                        
-                        // 稍微停頓後，繼續下一組 (1秒)
-                        setTimeout(animateNextGroup, 1000);
+                        // 開獎後只停頓 0.5 秒就抽下一組
+                        setTimeout(drawNextGroup, 500);
                     }
                 }, tickInterval);
             }
 
-            // 開始第一組
-            animateNextGroup();
+            // 開始高速抽第一組
+            drawNextGroup();
         }
 
         function finishDrawing() {
             isDrawing = false;
-            statusTitle.innerHTML = '🎉 分組完成！ 🎉';
+            statusTitle.textContent = '🎉 分組完成！';
             statusTitle.className = 'text-4xl sm:text-5xl font-black mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 tracking-widest drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]';
-            playSuccessSound();
             fireConfetti();
-            restartBtn.classList.remove('hidden');
+            
+            // 等待 1.5 秒讓大家看完結果後，轉場到乾淨列表
+            setTimeout(() => {
+                drawScreen.classList.add('opacity-0');
+                setTimeout(() => {
+                    drawScreen.classList.add('hidden');
+                    renderSimpleList();
+                    resultScreen.classList.remove('hidden');
+                    setTimeout(() => {
+                        resultScreen.classList.remove('opacity-0');
+                    }, 50);
+                }, 500);
+            }, 1500);
         }
 
-        // 事件監聽
-        startBtn.addEventListener('click', () => {
-            if (isDrawing) return;
-            initAudio(); // 初始化音效
-            
-            if (processNames()) {
-                // 隱藏設定區，顯示抽籤區
-                setupScreen.classList.add('opacity-0', 'scale-95', 'pointer-events-none', 'absolute');
-                setTimeout(() => {
-                    setupScreen.classList.add('hidden');
-                    drawScreen.classList.remove('hidden');
-                    createGroupCards();
-                    
-                    // 淡入抽籤區並開始
-                    setTimeout(() => {
-                        drawScreen.classList.remove('opacity-0');
-                        setTimeout(startDrawingSequence, 500); // 給予視覺緩衝後開始
-                    }, 50);
-                }, 300);
+        function renderSimpleList() {
+            simpleListContainer.innerHTML = '';
+            for (let i = 0; i < NUM_GROUPS; i++) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4';
+                
+                const title = document.createElement('h4');
+                title.className = 'font-black text-lg text-emerald-700 border-b-2 border-emerald-200 pb-2 mb-3';
+                title.textContent = `第 ${i + 1} 組`;
+                groupDiv.appendChild(title);
+
+                const list = document.createElement('div');
+                list.className = 'flex flex-col gap-2';
+                
+                finalGroups[i].forEach(name => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-100 text-slate-700 font-bold';
+                    item.textContent = name;
+                    list.appendChild(item);
+                });
+
+                groupDiv.appendChild(list);
+                simpleListContainer.appendChild(groupDiv);
             }
+        }
+
+        copyExcelBtn.addEventListener('click', () => {
+            let excelData = '';
+            for (let i = 0; i < NUM_GROUPS; i++) {
+                // 加入組別標題
+                excelData += `[ 第 ${i + 1} 組 ]\n`;
+                // 逐行加入名字 (一人一列)
+                finalGroups[i].forEach(name => {
+                    excelData += `${name}\n`;
+                });
+                // 兩組之間空一行方便閱讀 (可選，這裡加上確保不擁擠)
+                excelData += '\n'; 
+            }
+
+            // 建立暫存區塊以複製文字
+            const textarea = document.createElement('textarea');
+            textarea.value = excelData.trim();
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                // 按鈕特效反饋
+                const originalHTML = copyExcelBtn.innerHTML;
+                copyExcelBtn.innerHTML = '✅ 已成功複製！請至 Excel 貼上';
+                copyExcelBtn.classList.replace('bg-emerald-600', 'bg-blue-600');
+                
+                setTimeout(() => {
+                    copyExcelBtn.innerHTML = originalHTML;
+                    copyExcelBtn.classList.replace('bg-blue-600', 'bg-emerald-600');
+                }, 3000);
+            } catch (err) {
+                alert('複製失敗，請手動圈選文字複製。');
+            }
+            
+            document.body.removeChild(textarea);
         });
 
         restartBtn.addEventListener('click', () => {
-            // 重置 UI
-            drawScreen.classList.add('opacity-0');
+            resultScreen.classList.add('opacity-0');
             statusTitle.className = 'text-3xl sm:text-4xl font-black mb-8 text-center text-amber-400 tracking-widest drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]';
             statusTitle.textContent = '準備開始...';
             
             setTimeout(() => {
-                drawScreen.classList.add('hidden');
-                setupScreen.classList.remove('hidden', 'absolute', 'pointer-events-none');
+                resultScreen.classList.add('hidden');
+                setupScreen.classList.remove('hidden', 'absolute');
                 setTimeout(() => {
-                    setupScreen.classList.remove('opacity-0', 'scale-95');
+                    setupScreen.classList.remove('opacity-0');
                 }, 50);
             }, 500);
         });
 
-        // 簡單的 Canvas 紙片慶祝特效
-        const canvas = document.getElementById('confetti-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        let confettiActive = false;
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
+        // 簡單彩帶特效 (Canvas)
         function fireConfetti() {
-            particles = [];
-            confettiActive = true;
-            const colors = ['#fde047', '#3b82f6', '#ef4444', '#22c55e', '#a855f7'];
+            confettiCanvas.classList.remove('hidden');
+            const ctx = confettiCanvas.getContext('2d');
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
             
-            for (let i = 0; i < 150; i++) {
+            const particles = [];
+            const colors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#4ade80', '#60a5fa'];
+            
+            for(let i=0; i<100; i++) {
                 particles.push({
-                    x: canvas.width / 2,
-                    y: canvas.height / 2 + 100,
-                    r: Math.random() * 6 + 2,
-                    dx: Math.random() * 20 - 10,
-                    dy: Math.random() * -20 - 5,
+                    x: confettiCanvas.width / 2,
+                    y: confettiCanvas.height / 2 + 100,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 1) * 20 - 5,
+                    size: Math.random() * 10 + 5,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                    tilt: Math.floor(Math.random() * 10) - 10,
-                    tiltAngleInc: (Math.random() * 0.07) + 0.05,
-                    tiltAngle: 0
+                    rot: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 10
                 });
             }
-            animateConfetti();
-        }
 
-        function animateConfetti() {
-            if (!confettiActive) return;
-            requestAnimationFrame(animateConfetti);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            let activeParticles = 0;
-            particles.forEach(p => {
-                p.tiltAngle += p.tiltAngleInc;
-                p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
-                p.x += Math.sin(p.tiltAngle) * 2;
-                p.dy += 0.2; // 重力
-                p.y += p.dy;
-                p.x += p.dx;
+            let animationId;
+            function render() {
+                ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                let active = false;
                 
-                if (p.y <= canvas.height) activeParticles++;
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.5; // 重力
+                    p.rot += p.rotSpeed;
+                    
+                    if(p.y < confettiCanvas.height) active = true;
 
-                ctx.beginPath();
-                ctx.lineWidth = p.r;
-                ctx.strokeStyle = p.color;
-                ctx.moveTo(p.x + p.tilt + p.r, p.y);
-                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
-                ctx.stroke();
-            });
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot * Math.PI / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                });
 
-            if (activeParticles === 0) confettiActive = false;
+                if(active) {
+                    animationId = requestAnimationFrame(render);
+                } else {
+                    confettiCanvas.classList.add('hidden');
+                }
+            }
+            render();
         }
     </script>
 </body>
