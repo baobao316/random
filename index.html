@@ -22,11 +22,21 @@
     <div class="fixed bottom-20 right-20 w-64 h-64 bg-purple-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 pointer-events-none"></div>
 
     <h1 class="text-4xl sm:text-5xl font-black mb-10 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 drop-shadow-lg z-10">
-        🎲 終極分組抽籤 (6組)
+        🎲 終極分組抽籤
     </h1>
 
     <!-- 階段一：名單輸入 -->
     <div id="setup-screen" class="w-full max-w-2xl glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl transition-all duration-500 z-10">
+        
+        <!-- 新增自訂組數欄位 -->
+        <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-800/80 border border-slate-600 rounded-xl p-4 gap-4">
+            <label for="group-count" class="text-lg font-bold text-slate-300">請設定預計分成幾組：</label>
+            <div class="flex items-center gap-2">
+                <input type="number" id="group-count" value="6" min="2" max="100" class="w-24 bg-slate-900 text-white text-center font-bold text-xl rounded-lg py-2 border border-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                <span class="text-slate-400 font-bold">組</span>
+            </div>
+        </div>
+
         <label for="names-input" class="block text-lg font-bold mb-3 text-slate-300">請貼上參與者名單 (每行一個名字或用逗號分隔)：</label>
         <textarea id="names-input" rows="8" class="w-full bg-slate-800/80 border border-slate-600 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow text-lg resize-none mb-4" placeholder="例如：
 王大明
@@ -82,8 +92,8 @@
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50 hidden"></canvas>
 
     <script>
-        // 核心設定
-        const NUM_GROUPS = 6;
+        // 核心設定：將常數改為變數，以接收自訂數量
+        let numGroups = 6;
         let finalGroups = [];
         let audioCtx = null;
         let isDrawing = false;
@@ -92,6 +102,7 @@
         const setupScreen = document.getElementById('setup-screen');
         const drawScreen = document.getElementById('draw-screen');
         const resultScreen = document.getElementById('result-screen');
+        const groupCountInput = document.getElementById('group-count');
         const namesInput = document.getElementById('names-input');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
@@ -154,19 +165,23 @@
             }
             errorMsg.classList.add('hidden');
 
+            // 讀取使用者設定的組數
+            numGroups = parseInt(groupCountInput.value) || 6;
+            if (numGroups < 2) numGroups = 2; // 防呆機制，最少分兩組
+
             let names = text.split(/[\n,、\t]+/).map(n => n.trim()).filter(n => n);
             if (names.length === 0) return;
 
-            // 隨機打亂並分配到6組
+            // 隨機打亂並分配到自訂組數中
             shuffleArray(names);
-            finalGroups = Array.from({ length: NUM_GROUPS }, () => []);
+            finalGroups = Array.from({ length: numGroups }, () => []);
             names.forEach((name, i) => {
-                finalGroups[i % NUM_GROUPS].push(name);
+                finalGroups[i % numGroups].push(name);
             });
 
-            // 建立6張抽籤卡片
+            // 建立對應數量的抽籤卡片
             groupsContainer.innerHTML = '';
-            for (let i = 0; i < NUM_GROUPS; i++) {
+            for (let i = 0; i < numGroups; i++) {
                 groupsContainer.innerHTML += `
                     <div id="group-card-${i}" class="glass-panel rounded-xl p-4 sm:p-6 shadow-xl transform transition-all duration-200">
                         <h3 class="text-lg font-bold text-slate-400 mb-3 border-b border-slate-600/50 pb-2">第 ${i + 1} 組</h3>
@@ -195,7 +210,8 @@
             statusTitle.textContent = '🚀 緊張分組中...';
 
             function drawNextGroup() {
-                if (currentGroupIndex >= NUM_GROUPS) {
+                // 判斷是否全部自訂組別皆開獎完畢
+                if (currentGroupIndex >= numGroups) {
                     finishDrawing();
                     return;
                 }
@@ -268,7 +284,8 @@
 
         function renderSimpleList() {
             simpleListContainer.innerHTML = '';
-            for (let i = 0; i < NUM_GROUPS; i++) {
+            // 依據動態組數生成表格清單
+            for (let i = 0; i < numGroups; i++) {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4';
                 
@@ -294,7 +311,8 @@
 
         copyExcelBtn.addEventListener('click', () => {
             let excelData = '';
-            for (let i = 0; i < NUM_GROUPS; i++) {
+            // 依據動態組數準備 Excel 資料
+            for (let i = 0; i < numGroups; i++) {
                 // 加入組別標題
                 excelData += `[ 第 ${i + 1} 組 ]\n`;
                 // 逐行加入名字 (一人一列)
