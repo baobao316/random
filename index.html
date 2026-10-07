@@ -172,11 +172,19 @@
             let names = text.split(/[\n,、\t]+/).map(n => n.trim()).filter(n => n);
             if (names.length === 0) return;
 
-            // 隨機打亂並分配到自訂組數中
+            // 1. 隨機打亂參與者名單
             shuffleArray(names);
+            
+            // 2. 建立隨機的「組別發牌順序」，確保多出的人隨機分到任一組
+            let groupOrder = Array.from({ length: numGroups }, (_, i) => i);
+            shuffleArray(groupOrder); // 把組別順序也打亂！
+
+            // 3. 準備空陣列並開始發牌
             finalGroups = Array.from({ length: numGroups }, () => []);
             names.forEach((name, i) => {
-                finalGroups[i % numGroups].push(name);
+                // 依照打亂的組別順序來分配名單
+                let targetGroup = groupOrder[i % numGroups];
+                finalGroups[targetGroup].push(name);
             });
 
             // 建立對應數量的抽籤卡片
